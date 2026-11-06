@@ -1,0 +1,39 @@
+name: Backend CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+        with:
+          version: "0.13.7"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv lock --check
+      - run: uv sync --locked --no-editable
+      - run: uv pip check
+      - run: uv run --locked --no-editable pytest -ra
+      - name: Ruff lint
+        if: ${{ !cancelled() }}
+        run: uv run --locked ruff check .
+      - name: Ruff formatting
+        if: ${{ !cancelled() }}
+        run: uv run --locked ruff format --check .
+      - name: MyPy
+        if: ${{ !cancelled() }}
+        run: uv run --locked mypy

@@ -1,0 +1,47 @@
+services:
+  backend:
+    image: vision-inference:local
+    build:
+      context: ./backend
+      target: runtime
+    environment:
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://mlflow:5000}
+      MODEL_NAME: ${MODEL_NAME:-MNIST}
+      MODEL_VERSION: ${MODEL_VERSION:-}
+      MODEL_CACHE_DIR: /home/inference/.cache/models
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+    volumes:
+      - ./inputs:/inputs:ro
+      - model-cache:/home/inference/.cache/models
+    networks: [mlflow]
+
+  tests:
+    profiles: [tools]
+    image: vision-inference-tests:local
+    build:
+      context: ./backend
+      target: tests
+    environment:
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+
+  lock:
+    profiles: [tools]
+    build:
+      context: ./backend
+      target: base
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    volumes:
+      - ./backend:/app
+    environment:
+      UV_CACHE_DIR: /tmp/uv-cache
+    command: [uv, lock]
+
+networks:
+  mlflow:
+    external: true
+    name: vision-mlflow
+
+volumes:
+  model-cache:
