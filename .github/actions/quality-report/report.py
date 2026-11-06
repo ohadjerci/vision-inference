@@ -312,8 +312,9 @@ def publish() -> int:
     request = urllib.request.Request(
         os.environ.get("GITHUB_API_URL", "https://api.github.com")
         + f"/repos/{repository}/actions/artifacts/{int(artifact['id'])}/zip",
-        headers={"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}"},
     )
+    # Authenticate GitHub only; its redirect targets signed artifact storage URLs.
+    request.add_unredirected_header("Authorization", f"Bearer {os.environ['GITHUB_TOKEN']}")
     with urllib.request.urlopen(request, timeout=30) as response:
         archive_bytes = response.read(1_000_001)
     if len(archive_bytes) > 1_000_000:

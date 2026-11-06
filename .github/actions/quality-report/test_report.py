@@ -142,7 +142,14 @@ class ReportTests(unittest.TestCase):
                 report.coverage_stats(root)
 
     def simulate_publish(
-        self, *, current_head="a", run_head="a", attached=False, existing=True, report_head="a"
+        self,
+        *,
+        current_head="a",
+        run_head="a",
+        attached=False,
+        existing=True,
+        report_head="a",
+        redirect=False,
     ):
         payload = self.example()
         payload["head_sha"] = report_head * 40
@@ -190,6 +197,20 @@ class ReportTests(unittest.TestCase):
                 )
             return {}
 
+        def download(request, timeout):
+            if redirect:
+                self.assertEqual(request.get_header("Authorization"), "Bearer test-token")
+                redirected = report.urllib.request.HTTPRedirectHandler().redirect_request(
+                    request,
+                    None,
+                    302,
+                    "Found",
+                    {},
+                    "https://artifact-storage.example/report.zip?signature=temporary",
+                )
+                self.assertFalse(redirected.has_header("Authorization"))
+            return io.BytesIO(archive.getvalue())
+
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "event.json").write_text(json.dumps(event))
@@ -203,12 +224,13 @@ class ReportTests(unittest.TestCase):
             with (
                 patch.dict(os.environ, env),
                 patch.object(report, "api", side_effect=fake_api),
-                patch.object(
-                    report.urllib.request, "urlopen", return_value=io.BytesIO(archive.getvalue())
-                ),
+                patch.object(report.urllib.request, "urlopen", side_effect=download),
             ):
                 self.assertEqual(report.publish(), 0)
         return [item for item in calls if item[1] != "GET"]
+
+    def test_artifact_redirect_does_not_forward_github_token(self):
+        self.assertEqual(len(self.simulate_publish(redirect=True)), 1)
 
     def test_publish_updates_only_bot_comment_for_current_head(self):
         writes = self.simulate_publish()
