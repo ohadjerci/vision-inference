@@ -39,6 +39,8 @@ Use pytest with `test_*.py` files and `test_*` functions. Reuse fixtures, tempor
 
 ## Commit & Pull Request Guidelines
 
+“Commit & push” authorizes creating or updating a pull request automatically when safe, after local checks and successful remote CI for the exact pushed commit. Reuse an open PR for the current branch; otherwise create one against the repository's default branch. When starting on the default branch, create a feature branch before committing unless the user explicitly requests a direct push. Do not merge automatically, rewrite published history, create duplicate/empty PRs, or manufacture a retrospective PR for changes already on the target branch. Resolve the head/base from repository context first; if a safe action remains blocked or ambiguous, explain the specific reason and ask for direction before taking a risky action. Report the PR URL, branch, commit SHA, validation results, and exact CI run URL. PR creation is part of delivery, not a workaround solely to trigger CI.
+
 Existing commits use short imperative subjects, such as “Add standalone MLflow inference CLI.” Follow that style. Describe behavior changes and validation in pull requests; link related issues when applicable. CI runs on all branch pushes, PRs targeting `main`, and manual dispatch. It checks tests, Ruff, configured MyPy, locked dependencies, and measured line/branch coverage floors in `.github/coverage-baseline.json`. Pytest emits branch-enabled XML/JSON coverage and JUnit reports; artifacts are retained for seven days. See `docs/development.md` for commands and artifact names.
 
 ## Configuration & Agent Instructions
