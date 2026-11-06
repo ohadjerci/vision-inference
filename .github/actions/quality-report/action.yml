@@ -1,0 +1,42 @@
+name: Quality report
+description: Enforce measured coverage and render four badges; safely update a PR report.
+inputs:
+  mode:
+    description: collect in read-only CI or publish from the trusted workflow_run job
+    default: collect
+  project-directory:
+    description: Directory containing coverage.json and coverage.xml
+    default: .
+  base-sha:
+    description: Pull request base commit; empty outside pull requests
+    default: ""
+  head-sha:
+    description: Pull request head commit; empty outside pull requests
+    default: ""
+  mypy-outcome:
+    description: Outcome of the independent MyPy step
+    default: skipped
+  ruff-lint-outcome:
+    description: Outcome of the independent Ruff lint step
+    default: skipped
+  ruff-format-outcome:
+    description: Outcome of the independent Ruff format step
+    default: skipped
+  token:
+    description: Write-scoped token used only by the trusted publish job
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Render or publish four badges
+      shell: bash
+      env:
+        REPORT_MODE: ${{ inputs.mode }}
+        PROJECT_DIRECTORY: ${{ inputs.project-directory }}
+        PR_BASE_SHA: ${{ inputs.base-sha }}
+        PR_HEAD_SHA: ${{ inputs.head-sha }}
+        MYPY_OUTCOME: ${{ inputs.mypy-outcome }}
+        RUFF_LINT_OUTCOME: ${{ inputs.ruff-lint-outcome }}
+        RUFF_FORMAT_OUTCOME: ${{ inputs.ruff-format-outcome }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: python3 "$GITHUB_ACTION_PATH/report.py"

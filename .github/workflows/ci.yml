@@ -1,15 +1,18 @@
 name: Backend CI
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   backend:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
@@ -18,22 +21,80 @@ jobs:
       MKL_NUM_THREADS: "2"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
         with:
           version: "0.13.7"
           python-version: "3.12"
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
-      - run: uv lock --check
-      - run: uv sync --locked --no-editable
-      - run: uv pip check
-      - run: uv run --locked --no-editable pytest -ra
+      - name: Check lockfile
+        run: uv lock --check
+      - name: Install locked backend
+        id: dependencies
+        run: uv sync --locked --no-editable
+      - name: Check installed dependencies
+        run: uv pip check
+      - name: Test report action
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: uv run --locked python -m unittest discover -s ../.github/actions/quality-report -p 'test_*.py'
+      - name: Backend tests with branch coverage
+        id: tests
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: uv run --locked --no-editable pytest -ra --junitxml="$RUNNER_TEMP/pytest-cpu.xml"
       - name: Ruff lint
-        if: ${{ !cancelled() }}
-        run: uv run --locked ruff check .
+        id: ruff
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: >-
+          uv run --locked ruff check . ../.github/actions/quality-report --config pyproject.toml
+          --output-format=json --output-file "$RUNNER_TEMP/ruff.json"
       - name: Ruff formatting
-        if: ${{ !cancelled() }}
-        run: uv run --locked ruff format --check .
+        id: format
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        shell: bash
+        run: >-
+          uv run --locked ruff format --check . ../.github/actions/quality-report
+          --config pyproject.toml 2>&1 | tee "$RUNNER_TEMP/ruff-format.log"
       - name: MyPy
-        if: ${{ !cancelled() }}
-        run: uv run --locked mypy
+        id: mypy
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        shell: bash
+        run: uv run --locked mypy 2>&1 | tee "$RUNNER_TEMP/mypy.log"
+      - name: Enforce coverage and report four badges
+        if: ${{ always() }}
+        uses: ./.github/actions/quality-report
+        with:
+          project-directory: backend
+          base-sha: ${{ github.event.pull_request.base.sha }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          mypy-outcome: ${{ steps.mypy.outcome }}
+          ruff-lint-outcome: ${{ steps.ruff.outcome }}
+          ruff-format-outcome: ${{ steps.format.outcome }}
+      - name: Upload numeric quality report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: quality-report
+          path: ${{ runner.temp }}/quality-report.json
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Upload coverage reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: coverage-cpu
+          path: |
+            backend/coverage.xml
+            backend/coverage.json
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Upload CPU test report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: pytest-cpu
+          path: ${{ runner.temp }}/pytest-cpu.xml
+          retention-days: 7
+          if-no-files-found: ignore

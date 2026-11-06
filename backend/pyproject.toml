@@ -16,7 +16,7 @@ vision-infer = "inference_backend.cli:main"
 where = ["src"]
 
 [dependency-groups]
-dev = ["pytest>=9,<10", "ruff==0.17.4", "mypy==2.4.1"]
+dev = ["pytest>=9,<10", "pytest-cov>=7,<8", "ruff==0.17.4", "mypy==2.4.1"]
 
 [tool.uv]
 required-version = ">=0.13.7"
@@ -46,3 +46,20 @@ warn_unused_ignores = true
 [[tool.mypy.overrides]]
 module = ["mlflow", "mlflow.*"]
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=inference_backend --cov-config=pyproject.toml --cov-report=term-missing --cov-report=json --cov-report=xml"
+
+[tool.coverage.run]
+source = ["inference_backend"]
+branch = true
+relative_files = true
+
+[tool.coverage.paths]
+source = ["src/inference_backend", "*/site-packages/inference_backend"]
+
+[tool.coverage.json]
+output = "coverage.json"
+
+[tool.coverage.xml]
+output = "coverage.xml"
