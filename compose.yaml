@@ -8,7 +8,7 @@ services:
       MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://mlflow:5000}
       MODEL_NAME: ${MODEL_NAME:-MNIST}
       MODEL_VERSION: ${MODEL_VERSION:-}
-      MODEL_CACHE_DIR: /home/inference/.cache/models
+      MODEL_CACHE_DIR: ${MODEL_CACHE_DIR:-/home/inference/.cache/models}
       OMP_NUM_THREADS: "2"
       MKL_NUM_THREADS: "2"
     volumes:

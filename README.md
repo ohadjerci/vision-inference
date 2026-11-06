@@ -10,7 +10,7 @@ is a CLI; `frontend/` is reserved for later and there is no web API.
 In the training repository, run:
 
 ```bash
-mkdir -p logs/mlflow/db logs/mlflow/artifacts
+mkdir -p logs/train logs/eval logs/mlflow/db logs/mlflow/artifacts
 docker compose up --build -d mlflow
 docker compose run --build --rm train
 ```
