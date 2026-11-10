@@ -20,9 +20,9 @@ cp .env.example .env
 docker compose build backend
 docker compose run --rm backend /inputs/digit.png
 docker compose run --build --rm tests
-docker compose run --rm tests uv run --locked ruff check .
-docker compose run --rm tests uv run --locked ruff format --check .
-docker compose run --rm tests uv run --locked mypy
+docker compose run --rm tests uv run --locked --extra cpu ruff check .
+docker compose run --rm tests uv run --locked --extra cpu ruff format --check .
+docker compose run --rm tests uv run --locked --extra cpu mypy
 docker compose run --rm tests uv lock --check
 docker compose run --rm tests uv pip check
 ```

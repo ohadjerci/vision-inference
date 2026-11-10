@@ -1,7 +1,7 @@
 """Resolve a registry selection once and load its immutable packaged artifact."""
 
 from dataclasses import dataclass
-from typing import cast
+from typing import Any, cast
 
 import mlflow.artifacts
 import mlflow.pytorch
@@ -17,9 +17,16 @@ class LoadedModel:
     network: torch.nn.Module
     name: str
     version: str
+    metadata: dict[str, Any]
+    device: torch.device
 
 
-def load_model(settings: Settings) -> LoadedModel:
+def load_model(settings: Settings, device: str = "cpu") -> LoadedModel:
+    if device not in {"cpu", "cuda"}:
+        raise ValueError("Device must be 'cpu' or 'cuda'")
+    if device == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA was requested but is unavailable")
+    target = torch.device(device)
     client = MlflowClient(tracking_uri=settings.tracking_uri, registry_uri=settings.tracking_uri)
     if settings.model_version is None:
         selected = client.get_model_version_by_alias(settings.model_name, "best_model")
@@ -36,15 +43,13 @@ def load_model(settings: Settings) -> LoadedModel:
         registry_uri=settings.tracking_uri,
     )
     metadata = Model.load(path).metadata or {}
-    expected = {
-        "preprocessing": "mnist-v1",
-        "image_size": [28, 28],
-        "mean": 0.1307,
-        "std": 0.3081,
-        "labels": list(range(10)),
-    }
-    if any(metadata.get(key) != value for key, value in expected.items()):
-        raise ValueError("Model preprocessing metadata is incompatible with mnist-v1")
-    network = cast(torch.nn.Module, mlflow.pytorch.load_model(path, map_location="cpu"))
+    network = cast(torch.nn.Module, mlflow.pytorch.load_model(path, map_location=target))
+    network = network.to(target)
     network.eval()
-    return LoadedModel(network=network, name=settings.model_name, version=version)
+    return LoadedModel(
+        network=network,
+        name=settings.model_name,
+        version=version,
+        metadata=metadata,
+        device=target,
+    )

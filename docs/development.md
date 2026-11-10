@@ -8,9 +8,9 @@ The Docker image installs the `src/` package non-editably for its runtime.
 
 ```bash
 docker compose run --build --rm tests
-docker compose run --rm tests uv run --locked ruff check .
-docker compose run --rm tests uv run --locked ruff format --check .
-docker compose run --rm tests uv run --locked mypy
+docker compose run --rm tests uv run --locked --extra cpu ruff check .
+docker compose run --rm tests uv run --locked --extra cpu ruff format --check .
+docker compose run --rm tests uv run --locked --extra cpu mypy
 docker compose run --rm tests uv lock --check
 docker compose run --rm tests uv pip check
 ```
@@ -64,7 +64,7 @@ report action locally, mount that directory read-only:
 
 ```bash
 docker compose run --rm -v "$PWD/.github/actions:/quality-actions:ro" tests \
-  uv run --locked python -m unittest discover \
+  uv run --locked --extra cpu python -m unittest discover \
   -s /quality-actions/quality-report -p 'test_*.py'
 ```
 
@@ -72,7 +72,7 @@ To include action scripts in a local lint check matching CI:
 
 ```bash
 docker compose run --rm -v "$PWD/.github/actions:/quality-actions:ro" tests \
-  uv run --locked ruff check . /quality-actions/quality-report --config pyproject.toml
+  uv run --locked --extra cpu ruff check . /quality-actions/quality-report --config pyproject.toml
 ```
 
 Use `ruff format --check` with the same paths/configuration for its formatting check.
@@ -94,5 +94,8 @@ at build time; rebuild `backend` before checking CLI behavior after source edits
 docker compose build backend
 ```
 
-The runtime stays CPU-only and non-root. Never add training checkout imports or
+The default image and GitHub CI install the `cpu` extra; the GPU override builds
+the `cuda` extra. For local uv commands, select exactly one extra, for example
+`uv sync --locked --extra cpu` or `uv sync --locked --extra cuda`, and pass the
+same extra to `uv run`. The runtime stays non-root. Never add training checkout imports or
 mounts to make a model load; publish a compatible standalone artifact instead.

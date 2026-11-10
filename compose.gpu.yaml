@@ -1,0 +1,25 @@
+services:
+  backend:
+    image: vision-inference-cuda:local
+    build:
+      args:
+        TORCH_VARIANT: cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+  debug:
+    image: vision-inference-debug-cuda:local
+    build:
+      args:
+        TORCH_VARIANT: cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
