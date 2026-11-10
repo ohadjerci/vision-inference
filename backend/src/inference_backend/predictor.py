@@ -48,11 +48,20 @@ def _normalization(metadata: dict[str, Any], key: str, channels: int) -> torch.T
 
 
 def preprocess(image_path: Path, metadata: dict[str, Any]) -> torch.Tensor:
-    channels, height, width = _dimensions(metadata, "input_shape", 3)
-    if _dimensions(metadata, "image_size", 2) != [height, width]:
-        raise ValueError("Metadata image_size must match input_shape height and width")
+    height, width = _dimensions(metadata, "image_size", 2)
+    if "input_shape" in metadata:
+        channels, shape_height, shape_width = _dimensions(metadata, "input_shape", 3)
+        if [shape_height, shape_width] != [height, width]:
+            raise ValueError("Metadata image_size must match input_shape height and width")
+    else:
+        lengths = [
+            len(value)
+            for key in ("mean", "std")
+            if isinstance((value := metadata.get(key)), (list, tuple))
+        ]
+        channels = max(lengths, default=1)
     if channels not in (1, 3):
-        raise ValueError("Metadata input_shape must specify 1 or 3 input channels")
+        raise ValueError("Metadata must specify 1 or 3 input channels")
     mean = _normalization(metadata, "mean", channels)
     std = _normalization(metadata, "std", channels)
     with Image.open(image_path) as image:
@@ -69,12 +78,10 @@ def preprocess(image_path: Path, metadata: dict[str, Any]) -> torch.Tensor:
 
 
 def predict(model: LoadedModel, image_path: Path, metadata: dict[str, Any]) -> Prediction:
-    classes = metadata.get("num_classes")
-    if type(classes) is not int or classes < 1:
-        raise ValueError("Metadata num_classes must be a positive integer")
     labels = metadata.get("labels")
-    if labels is not None and (not isinstance(labels, (list, tuple)) or len(labels) != classes):
-        raise ValueError("Metadata labels must match num_classes")
+    if not isinstance(labels, (list, tuple)) or not labels:
+        raise ValueError("Metadata labels must be a non-empty list")
+    classes = len(labels)
     inputs = preprocess(image_path, metadata).to(model.device)
     model.network.eval()
     with torch.inference_mode():

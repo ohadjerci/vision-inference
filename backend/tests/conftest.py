@@ -11,11 +11,10 @@ from inference_backend.model_loader import LoadedModel
 @pytest.fixture
 def metadata():
     return {
-        "input_shape": [1, 28, 28],
         "image_size": [28, 28],
-        "mean": [0.1307],
-        "std": [0.3081],
-        "num_classes": 10,
+        "mean": 0.1307,
+        "std": 0.3081,
+        "preprocessing": "mnist-v1",
         "labels": list(range(10)),
     }
 
