@@ -34,34 +34,34 @@ jobs:
         run: uv lock --check
       - name: Install locked backend
         id: dependencies
-        run: uv sync --locked --no-editable
+        run: uv sync --locked --extra cpu --no-editable
       - name: Check installed dependencies
         run: uv pip check
       - name: Test report action
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
-        run: uv run --locked python -m unittest discover -s ../.github/actions/quality-report -p 'test_*.py'
+        run: uv run --locked --extra cpu python -m unittest discover -s ../.github/actions/quality-report -p 'test_*.py'
       - name: Backend tests with branch coverage
         id: tests
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
-        run: uv run --locked --no-editable pytest -ra --junitxml="$RUNNER_TEMP/pytest-cpu.xml"
+        run: uv run --locked --extra cpu --no-editable pytest -ra --junitxml="$RUNNER_TEMP/pytest-cpu.xml"
       - name: Ruff lint
         id: ruff
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: >-
-          uv run --locked ruff check . ../.github/actions/quality-report --config pyproject.toml
+          uv run --locked --extra cpu ruff check . ../.github/actions/quality-report --config pyproject.toml
           --output-format=json --output-file "$RUNNER_TEMP/ruff.json"
       - name: Ruff formatting
         id: format
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         shell: bash
         run: >-
-          uv run --locked ruff format --check . ../.github/actions/quality-report
+          uv run --locked --extra cpu ruff format --check . ../.github/actions/quality-report
           --config pyproject.toml 2>&1 | tee "$RUNNER_TEMP/ruff-format.log"
       - name: MyPy
         id: mypy
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         shell: bash
-        run: uv run --locked mypy 2>&1 | tee "$RUNNER_TEMP/mypy.log"
+        run: uv run --locked --extra cpu mypy 2>&1 | tee "$RUNNER_TEMP/mypy.log"
       - name: Enforce coverage and report four badges
         if: ${{ always() }}
         uses: ./.github/actions/quality-report

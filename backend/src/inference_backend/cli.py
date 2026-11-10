@@ -16,12 +16,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "image", type=Path, help="PNG/JPEG path (light digit on a dark background)"
     )
+    parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
     args = parser.parse_args(argv)
     try:
         if not args.image.is_file():
             raise FileNotFoundError(f"Image does not exist: {args.image}")
-        model = load_model(Settings.from_env())
-        result = predict(model, args.image)
+        model = load_model(Settings.from_env(), args.device)
+        result = predict(model, args.image, model.metadata)
     except Exception as error:
         print(f"Inference failed: {error}", file=sys.stderr)
         return 1

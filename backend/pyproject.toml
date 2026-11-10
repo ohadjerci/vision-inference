@@ -7,27 +7,40 @@ name = "vision-inference"
 version = "0.1.0"
 description = "Standalone MLflow-backed MNIST inference CLI"
 requires-python = ">=3.12,<3.13"
-dependencies = ["torch==2.6.0", "mlflow==3.18.0", "Pillow==11.1.0", "numpy==1.26.4"]
+dependencies = ["mlflow==3.18.0", "Pillow==11.1.0", "numpy==1.26.4"]
 
 [project.scripts]
 vision-infer = "inference_backend.cli:main"
+
+[project.optional-dependencies]
+cpu = ["torch==2.6.0"]
+cuda = ["torch==2.6.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [dependency-groups]
-dev = ["pytest>=9,<10", "pytest-cov>=7,<8", "ruff==0.17.4", "mypy==2.4.1"]
+dev = ["debugpy>=1.8,<2", "pytest>=9,<10", "pytest-cov>=7,<8", "ruff==0.17.4", "mypy==2.4.1"]
 
 [tool.uv]
 required-version = ">=0.13.7"
 environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+conflicts = [[{ extra = "cpu" }, { extra = "cuda" }]]
 
 [tool.uv.sources]
-torch = [{ index = "pytorch-cpu" }]
+torch = [
+    { index = "pytorch-cu124", extra = "cuda" },
+    { index = "pytorch-cpu", extra = "cpu" },
+]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [tool.ruff]

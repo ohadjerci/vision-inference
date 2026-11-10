@@ -9,7 +9,7 @@ there are no manual `sys.path` changes or imports from the training checkout.
 | Module | Responsibility |
 | --- | --- |
 | `settings.py` | Validate environment settings and writable cache configuration. |
-| `model_loader.py` | Resolve a model version, download it through MLflow, validate metadata, and load on CPU. |
+| `model_loader.py` | Resolve a model version, download its metadata and load on the selected device. |
 | `predictor.py` | Prepare images, run inference, and return a prediction result. |
 | `cli.py` | Parse an image path, call the backend functions, and print JSON or an error. |
 
@@ -21,11 +21,11 @@ placeholder; no frontend framework, web API, or build tooling is implemented.
 
 1. Read settings and resolve `best_model`, unless a numeric version was supplied.
 2. Pin that exact version and download its MLflow package through HTTP.
-3. Validate `mnist-v1` metadata: 28×28 input, mean `0.1307`, standard deviation
-   `0.3081`, and labels 0 through 9. Load the network in evaluation mode on CPU.
-4. Decode PNG/JPEG input, convert to grayscale, resize with bilinear interpolation,
-   scale pixels to 0–1, and normalize. Tensor shape is `[1, 1, 28, 28]`.
-5. Run without gradients and require ten finite logits. Softmax gives class
+3. Load the network in evaluation mode on the selected CPU or CUDA device.
+4. Validate metadata for input shape, image size, normalization and class count.
+   Decode PNG/JPEG input, convert to grayscale or RGB, resize with bilinear
+   interpolation, scale pixels to 0–1, and normalize using metadata values.
+5. Run in inference mode and require the metadata's number of finite logits. Softmax gives class
    probabilities; return the highest-probability digit, confidence, and model version.
 
 Successful CLI output is JSON on stdout. Errors go to stderr with a nonzero exit

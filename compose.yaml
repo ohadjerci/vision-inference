@@ -26,6 +26,29 @@ services:
       OMP_NUM_THREADS: "2"
       MKL_NUM_THREADS: "2"
 
+  debug:
+    profiles: [tools]
+    image: vision-inference-tests:local
+    build:
+      context: ./backend
+      target: tests
+    command: [sleep, infinity]
+    environment:
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://mlflow:5000}
+      MODEL_NAME: ${MODEL_NAME:-MNIST}
+      MODEL_VERSION: ${MODEL_VERSION:-}
+      MODEL_CACHE_DIR: ${MODEL_CACHE_DIR:-/home/inference/.cache/models}
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      PYTHONPATH: /app/src
+    volumes:
+      - ./backend/src:/app/src:ro
+      - ./inputs:/inputs:ro
+      - model-cache:/home/inference/.cache/models
+    ports:
+      - "127.0.0.1:5678:5678"
+    networks: [mlflow]
+
   lock:
     profiles: [tools]
     build:

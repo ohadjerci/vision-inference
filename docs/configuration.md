@@ -39,6 +39,18 @@ are errors. The loader does not choose another version or fall back to a cached
 model silently. The [architecture guide](architecture.md#selection-requirement-mismatch)
 explains the training-side validation/test-loss mismatch.
 
+## Device selection
+
+The CLI defaults to CPU; use `--device cpu` to select it explicitly. For CUDA,
+install the NVIDIA driver and NVIDIA Container Toolkit and expose the GPU:
+
+```bash
+docker compose -f compose.yaml -f compose.gpu.yaml run --build --rm backend --device cuda /inputs/digit.png
+```
+
+The GPU image uses PyTorch with CUDA 12.4. A compatible driver is required.
+CUDA selection reports an error when unavailable, without falling back to CPU.
+
 ## Input and cache paths
 
 The host path `inputs/example.jpg` maps to `/inputs/example.jpg` in the container.

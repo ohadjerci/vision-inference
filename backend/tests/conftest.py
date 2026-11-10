@@ -9,13 +9,27 @@ from inference_backend.model_loader import LoadedModel
 
 
 @pytest.fixture
-def loaded_model():
+def metadata():
+    return {
+        "input_shape": [1, 28, 28],
+        "image_size": [28, 28],
+        "mean": [0.1307],
+        "std": [0.3081],
+        "num_classes": 10,
+        "labels": list(range(10)),
+    }
+
+
+@pytest.fixture
+def loaded_model(metadata):
     network = torch.nn.Sequential(torch.nn.Flatten(), torch.nn.Linear(784, 10))
     with torch.no_grad():
         network[1].weight.zero_()
         network[1].bias.copy_(torch.arange(10, dtype=torch.float32))
     network.eval()
-    return LoadedModel(network=network, name="MNIST", version="7")
+    return LoadedModel(
+        network=network, name="MNIST", version="7", metadata=metadata, device=torch.device("cpu")
+    )
 
 
 @pytest.fixture
@@ -26,7 +40,7 @@ def image_path(tmp_path: Path):
 
 
 @pytest.fixture
-def packaged_model(tmp_path: Path, loaded_model):
+def packaged_model(tmp_path: Path, loaded_model, metadata):
     path = tmp_path / "packaged"
     scripted = torch.jit.trace(loaded_model.network, torch.zeros(1, 1, 28, 28))
     mlflow.pytorch.save_model(
@@ -34,12 +48,6 @@ def packaged_model(tmp_path: Path, loaded_model):
         str(path),
         pip_requirements=["torch==2.6.0", "mlflow==3.18.0"],
         serialization_format="pickle",
-        metadata={
-            "preprocessing": "mnist-v1",
-            "image_size": [28, 28],
-            "mean": 0.1307,
-            "std": 0.3081,
-            "labels": list(range(10)),
-        },
+        metadata=metadata,
     )
     return path

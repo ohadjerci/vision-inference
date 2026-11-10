@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from mlflow.models import Model
+import torch
 
 import inference_backend.model_loader as loader
 from inference_backend.settings import Settings
@@ -48,23 +48,40 @@ def test_registry_failure_has_no_fallback(tmp_path, monkeypatch, requested):
     download.assert_not_called()
 
 
-@pytest.mark.parametrize("corrupt", [False, True])
-def test_rejects_incompatible_or_corrupt_package(tmp_path, packaged_model, monkeypatch, corrupt):
+def test_rejects_corrupt_package(tmp_path, packaged_model, monkeypatch):
     client = Mock()
     client.get_model_version_by_alias.return_value = SimpleNamespace(version="7")
     monkeypatch.setattr(loader, "MlflowClient", Mock(return_value=client))
     monkeypatch.setattr(
         loader.mlflow.artifacts, "download_artifacts", lambda **kwargs: str(packaged_model)
     )
-    if corrupt:
-        for path in (packaged_model / "data").rglob("*.pth"):
-            path.write_bytes(b"not a model")
-    else:
-        descriptor = Model.load(str(packaged_model))
-        descriptor.metadata = {"preprocessing": "unsupported"}
-        descriptor.save(str(packaged_model / "MLmodel"))
-    with pytest.raises((RuntimeError, pickle.UnpicklingError) if corrupt else ValueError):
+    for path in (packaged_model / "data").rglob("*.pth"):
+        path.write_bytes(b"not a model")
+    with pytest.raises((RuntimeError, pickle.UnpicklingError)):
         loader.load_model(Settings("http://mlflow:5000", cache_dir=tmp_path / "cache"))
+
+
+def test_cuda_selection_and_unavailability(tmp_path, packaged_model, monkeypatch):
+    settings = Settings("http://mlflow:5000", cache_dir=tmp_path / "cache")
+    monkeypatch.setattr(loader.torch.cuda, "is_available", lambda: False)
+    with pytest.raises(RuntimeError, match="CUDA.*unavailable"):
+        loader.load_model(settings, "cuda")
+    monkeypatch.setattr(loader.torch.cuda, "is_available", lambda: True)
+    client = Mock()
+    client.get_model_version_by_alias.return_value = SimpleNamespace(version="7")
+    monkeypatch.setattr(loader, "MlflowClient", Mock(return_value=client))
+    monkeypatch.setattr(
+        loader.mlflow.artifacts, "download_artifacts", lambda **kw: str(packaged_model)
+    )
+    network = Mock()
+    network.to.return_value = network
+    load = Mock(return_value=network)
+    monkeypatch.setattr(loader.mlflow.pytorch, "load_model", load)
+    loaded = loader.load_model(settings, "cuda")
+    assert loaded.device == torch.device("cuda")
+    assert load.call_args.kwargs["map_location"] == torch.device("cuda")
+    network.to.assert_called_once_with(torch.device("cuda"))
+    network.eval.assert_called_once()
 
 
 @pytest.mark.parametrize("value", ["file:///tmp/mlruns", "localhost:5000", ""])
