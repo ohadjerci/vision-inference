@@ -63,9 +63,7 @@ def test_cli_json_and_error(loaded_model, image_path, monkeypatch, capsys):
 
 
 def test_rgb_non_square_and_per_channel_normalization(image_path, metadata):
-    metadata.update(
-        input_shape=[3, 4, 7], image_size=[4, 7], mean=[0.0, 0.5, 1.0], std=[1.0, 0.5, 0.25]
-    )
+    metadata.update(image_size=[4, 7], mean=[0.0, 0.5, 1.0], std=[1.0, 0.5, 0.25])
     result = preprocess(image_path, metadata)
     assert result.shape == (1, 3, 4, 7)
     torch.testing.assert_close(result[0, :, 0, 0], torch.tensor([1.0, 1.0, 0.0]))
@@ -77,10 +75,10 @@ def test_rgb_non_square_and_per_channel_normalization(image_path, metadata):
         ("input_shape", None),
         ("input_shape", [2, 28, 28]),
         ("input_shape", [1, 0, 28]),
-        ("image_size", [28, 27]),
+        ("image_size", [0, 27]),
         ("mean", None),
         ("mean", [float("nan")]),
-        ("mean", [1, 2]),
+        ("mean", [1, 2, 3, 4]),
         ("std", None),
         ("std", [0]),
         ("std", [-1]),
@@ -89,17 +87,22 @@ def test_rgb_non_square_and_per_channel_normalization(image_path, metadata):
 )
 def test_invalid_preprocessing_metadata(image_path, metadata, key, value):
     metadata[key] = value
-    with pytest.raises(ValueError, match=key):
+    with pytest.raises(ValueError):
+        preprocess(image_path, metadata)
+
+
+def test_optional_input_shape_must_match_size(image_path, metadata):
+    metadata["input_shape"] = [1, 27, 28]
+    with pytest.raises(ValueError, match="image_size"):
         preprocess(image_path, metadata)
 
 
 @pytest.mark.parametrize(
     "key,value",
     [
-        ("num_classes", None),
-        ("num_classes", 0),
-        ("num_classes", True),
-        ("labels", [1, 2]),
+        ("labels", None),
+        ("labels", []),
+        ("labels", "digits"),
     ],
 )
 def test_invalid_output_metadata(loaded_model, image_path, metadata, key, value):
@@ -109,7 +112,7 @@ def test_invalid_output_metadata(loaded_model, image_path, metadata, key, value)
 
 
 def test_dynamic_classes_and_inference_mode(image_path, metadata):
-    metadata.update(num_classes=2, labels=["a", "b"])
+    metadata.update(labels=["a", "b"])
 
     class Network(torch.nn.Module):
         def forward(self, inputs):

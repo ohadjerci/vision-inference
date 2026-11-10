@@ -22,7 +22,9 @@ placeholder; no frontend framework, web API, or build tooling is implemented.
 1. Read settings and resolve `best_model`, unless a numeric version was supplied.
 2. Pin that exact version and download its MLflow package through HTTP.
 3. Load the network in evaluation mode on the selected CPU or CUDA device.
-4. Validate metadata for input shape, image size, normalization and class count.
+4. Validate metadata for image size, normalization and labels; validate input shape
+   when present. Infer channels from per-channel normalization values when the
+   shape is absent, using one channel for scalar normalization.
    Decode PNG/JPEG input, convert to grayscale or RGB, resize with bilinear
    interpolation, scale pixels to 0–1, and normalize using metadata values.
 5. Run in inference mode and require the metadata's number of finite logits. Softmax gives class
