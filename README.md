@@ -7,8 +7,7 @@ registry. **MNIST digit recognition is the first supported model.** The installe
 Python backend downloads a packaged model without importing the training checkout.
 
 [ML Engineering Lab](https://github.com/ohadjerci/ml-engineering-lab) trains,
-evaluates, and registers models. This project provides the `vision-infer` CLI;
-there is no inference web API or frontend yet.
+evaluates, and registers models. This project provides the `vision-infer` CLI and a browser-based drawing interface.
 
 ## Prerequisites
 
@@ -69,6 +68,48 @@ Run commands in the **inference repository root** after cloning.
    With `just` installed, use `just run /inputs/digit.png cpu` or
    `just run /inputs/digit.png gpu`. The device defaults to CPU when omitted.
    Run `just` to list the available recipes.
+
+## Drawing interface
+
+Start the shared MLflow server and configure the root `.env` as described above. Then start
+the API, which loads the selected model once and listens on `127.0.0.1:8000`:
+
+```bash
+docker compose up --build api
+```
+
+In another terminal, with Node.js 20.19+ or 22.12+ installed:
+
+```bash
+cd frontend
+cp .env.example .env
+npm ci
+npm run dev
+```
+
+Open the Vite URL shown in the terminal, draw a single digit, and select **Predict digit**.
+The development server proxies `/api` to the local backend. Set `VITE_API_BASE_URL` for
+another deployment; an API on another origin must allow that frontend origin via CORS.
+The API exposes `GET /health` and `POST /predict` with the PNG in multipart field `file`
+and an optional `device` field (`cpu` or `cuda`, default `cpu`).
+The returned JSON includes the CLI prediction fields plus `device` and `latency_ms`. For a production frontend, run
+`npm run build` and serve `frontend/dist` with a reverse proxy for `/api` or configure
+an accessible API URL at build time.
+
+To enable the GPU option, start the API with the CUDA image and GPU access:
+
+```bash
+docker compose -f compose.yaml -f compose.gpu.yaml up --build api
+```
+
+Alternatively, use `just api-up gpu` (or `just api-up cpu` for CPU). Stop the API
+with `just api-down`.
+
+Select **GPU (CUDA)** in the frontend. The API moves the loaded model to the chosen
+device and serializes predictions while switching devices. Run each device on the same
+drawing to compare the latest preprocessing and prediction time in milliseconds. This timing
+excludes model transfer, queueing, and network time; initial runs can be slower. CUDA requires a compatible
+NVIDIA GPU, driver, and NVIDIA Container Toolkit.
 
 ## Debugging in VS Code
 

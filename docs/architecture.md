@@ -13,9 +13,8 @@ there are no manual `sys.path` changes or imports from the training checkout.
 | `predictor.py` | Prepare images, run inference, and return a prediction result. |
 | `cli.py` | Parse an image path, call the backend functions, and print JSON or an error. |
 
-Loading and prediction are independent of argument parsing, so a future API can
-reuse them. The only current interface is the CLI. `frontend/README.md` is a brief
-placeholder; no frontend framework, web API, or build tooling is implemented.
+Loading and prediction are independent of the CLI. The HTTP API loads one model at startup
+and reuses it for requests from the React drawing interface.
 
 ## Prediction flow
 
